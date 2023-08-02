@@ -1,0 +1,22 @@
+{
+    "name": "rachyharkov/codeigniter4-media",
+    "description": "Codeigniter 4 library for managing media and handling upload behavior",
+    "type": "library",
+    "require": {
+        "php": ">=7.3",
+        "codeigniter4/framework": "^4"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Rachmad Nur Hayat",
+            "email": "rachmadnurhayat@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Rachyharkov\\CodeigniterMedia\\": "src/"
+        }
+    },
+    "minimum-stability": "dev"
+}

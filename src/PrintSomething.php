@@ -1,5 +1,5 @@
-
 <?php
+
 namespace Rachyharkov\CodeigniterMedia;
 
 class PrintSomething

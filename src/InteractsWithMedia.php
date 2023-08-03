@@ -1,137 +1,231 @@
 <?php
 
-namespace Rachyharkov\CodeigniterMedia;
+namespace App\Libraries\backend;
 
 use App\Models\Media;
 use CodeIgniter\Model;
 use CodeIgniter\Validation\Exceptions\ValidationException;
-use Config\Validation;
 
-trait InteractsWithMedia {
+trait InteractsWithMedia
+{
 
-  protected $media_file;
-  protected $uploaded_path;
-  protected $collectionName = 'default';
+	protected $media_file;
 
-  protected $media;
+	protected $model_id = null;
 
-  protected $result_with_media_data;
+	protected $media_builder;
 
-  protected $model_id; 
+	protected $collectionName;
 
-  protected $media_builder;
+	protected $operation; // add, update, delete
 
-  public function media() : Model
-  {
-    $model = new Media();
-    return $model;
-  }
+	protected $temp_media_data;
 
-  public function addMediaFromRequest($field) : self
-  {
-    $this->media_file = request()->getFile($field);
-    // dd($this->media_file);
-    $this->validateFile($this->media_file);
-    return $this;
-  }
+	protected $default_path;
 
-  public function toMediaCollection(string $collectionName = 'default'): self
-  {
-    $this->collectionName = $collectionName;
-    $this->storeMedia();
-    return $this;
-  }
+	protected $uploaded_path;
 
-  public function findWithMedia(string $id)
-  {
-    $this->model_id = $id;
-    $this->media_builder = $this->media()->where('model_id', $this->model_id);
+	
+	public function media(): Model
+	{
+		$model = new Media();
+		return $model;
+	}
 
-    return $this;
-  }
+	/**
+	 * This method is used to find model with media, always include this method before using other methods
+	 * @param string $id
+	 * @return $this
+	 */
+	public function findWithMedia(string $id)
+	{
+		$this->model_id = $id;
+		$this->media_builder = $this->media()->where('model_id', $this->model_id);
+		return $this;
+	}
 
-  public function getCollection(string $collectionName = 'default')
-  {
-    $this->collectionName = $collectionName;
-    $this->media_builder->where('collection_name', $this->collectionName);
-    
-    return $this->_exec();
-  }
+	public function addMediaFromRequest($field): self
+	{
+		$this->setOperation('add');
+		$this->validateFile(request()->getFile($field));
+		return $this;
+	}
 
-  protected function validateFile(object $file)
-  {
-    if (!$file->isValid()) {
-      return;
-    }
-  }
 
-  protected function storeMedia()
-  {
-    $path = 'uploads/' . $this->collectionName . '/';
+	/**
+	 * add media to collection (folder and label)
+	 * @param string $collectionName
+	 * @return $this
+	 * @throws ValidationException
+	 */
+	public function toMediaCollection(string $collectionName = 'default'): self
+	{
 
-    if (!is_dir(ROOTPATH . $path)) {
-      mkdir(ROOTPATH . $path, 0777, true);
-    }
+		$this->temp_media_data = [
+			'model_type' => get_class($this),
+			'model_id' => null,
+			'unique_name' => $this->media_file->getRandomName(),
+			'collection_name' => $collectionName,
+			'file_name' => null,
+			'file_type' => $this->media_file->getClientMimeType(),
+			'file_size' => $this->media_file->getSize(),
+			'file_path' => null,
+			'file_ext' => $this->media_file->getExtension(),
+			'orig_name' => $this->media_file->getClientName(),
+		];
 
-    $randomName = $this->media_file->getRandomName();
+		$this->setDefaultPath();
+		return $this;
+	}
 
-    $this->uploaded_path = $path . $randomName;
-    $temp_data = [
-      'model_type' => get_class($this),
-      'model_id' => $this->insertID(),
-      'unique_name' => $this->media_file->getRandomName(),
-      'collection_name' => $this->collectionName,
-      'file_type' => $this->media_file->getClientMimeType(),
-      'file_size' => $this->media_file->getSize(),
-      'file_ext' => $this->media_file->getExtension(),
-      'orig_name' => $this->media_file->getClientName(),
-    ];
-    $this->media()->insert($temp_data);
+	protected function setDefaultPath(string $root_path = 'uploads/')
+	{
+		$this->default_path = $root_path;
+	}
 
-    $this->model_id = $this->insertID();
+	protected function generateFolder(string $path, string $collectionName)
+	{
+		if($this->model_id != null) {
+			
+			$user_path = $path . $collectionName . '/' . $this->model_id;
+			if (!is_dir(ROOTPATH . 'public/'. $user_path)) {
+				mkdir(ROOTPATH . 'public/'. $user_path, 0777, true);
+			}
 
-    $user_path = $path . $this->model_id . '/';
-    if (!is_dir(ROOTPATH . $user_path)) {
-      mkdir(ROOTPATH . $user_path, 0777, true);
-    }
+			$this->temp_media_data['file_path'] = $user_path;
+		}
+	}
 
-    $filename = 'default.'. $this->media_file->getExtension();
+	public function of($id)
+	{
+		$this->model_id = $id;
 
-    $this->updateFilePath($user_path . $filename);
-    $this->updateFileName($filename);
+		if ($this->operation == 'add')
+		{
+			$this->temp_media_data['model_id'] = $this->model_id;
 
-    $this->media_file->move($user_path, $filename);
+			$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
+			
+			$this->storeMedia();
+		}
+	}
 
-    // destroy the file object
-    $this->media_file = null;
+	/**
+	 * get media collection
+	 * @param string $collectionName use default if not set
+	 * @param bool $returnResult return result or not
+	 * @return $this|Model
+	 * @throws ValidationException
+	 */
+	public function getCollection(string $collectionName = 'default', bool $returnResult = false)
+	{
+		if ($returnResult === true && $collectionName === '*') {
+			return $this->media_builder = $this->media_builder->findAll();
+		}
 
-    return $this;
-  }
+		if ($returnResult === true) {
+			return $this->media_builder = $this->media_builder->where('collection_name', $collectionName)->findAll();
+		}
 
-  protected function updateFilePath(string $path)
-  {
-    $this->media()->update($this->model_id, ['file_path' => $path]);
-  }
+		return $this;
+	}
 
-  protected function updateFileName(string $filename)
-  {
-    $this->media()->update($this->model_id, ['file_name' => $filename]);
-  }
 
-  protected function deleteMedia()
-  {
-    $this->media()->delete();
-  }
+	protected function validateFile(object $file)
+	{
+		if (!$file->isValid()) {
+			return false;
+		}
+		$this->media_file = $file;
+	}
 
-  protected function _exec()
-  {
-    $temp = $this->find($this->model_id);
-    if($this->returnType == 'array') {
-      $temp['media'] = $this->media_builder->findAll();
-    } else {
-      $temp->media = $this->media_builder->findAll();
-    }
-    // dd($temp);
-    return $temp;
-  }
+	protected function storeMedia()
+	{
+		
+		$this->generateFileName();
+
+		$this->media()->insert($this->temp_media_data);
+		$this->media_file->move(
+			ROOTPATH . 'public/'. $this->temp_media_data['file_path'], 
+			$this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext']
+		);
+
+		// destroy the file object
+		$this->media_file = null;
+	}
+
+	protected function generateFileName()
+	{
+		$this->temp_media_data['file_name'] = 'default';
+	}
+
+	/**
+	 * get media data, best used with where clause
+	 * @param string $collectionName
+	 * @return mixed
+	 */
+	public function getMedia(string $collectionName = 'default')
+	{
+		$data = $this->findAll();
+
+		foreach ($data as $key => $value) {
+
+			if ($this->returnType == 'array') {
+				$data[$key]['media'] = $this->media()->where('model_id', $value->id)->where('collection_name', $collectionName)->findAll();
+			} else {
+				$data[$key]->media = $this->media()->where('model_id', $value->id)->where('collection_name', $collectionName)->findAll();
+			}
+		}
+		return $data;
+	}
+
+	/**
+	 * get first media data
+	 * @return mixed
+	 */
+	public function getFirstMedia()
+	{
+		return $this->media_builder->first();
+	}
+
+	/**
+	 * get first media url
+	 * @return string|null
+	 */
+	public function getFirstMediaUrl()
+	{
+		$media = $this->getFirstMedia();
+		if ($media) {
+			return base_url($media->file_path .'/'. $media->file_name.'.'.$media->file_ext);
+		}
+		return null;
+	}
+
+	public function clearMediaCollection(string $collectionName = 'default')
+	{
+		// dd($this->media_builder->where('collection_name', $collectionName)->findAll());
+		$p = $this->media_builder->where('collection_name', $collectionName)->findAll();
+
+		if (count($p) > 0) {
+			foreach ($p as $k => $v) {
+				$pathinfo = pathinfo(ROOTPATH .'public/'. $v->file_path . $v->file_name);
+
+				if (file_exists($pathinfo['dirname'] . '/' . $pathinfo['basename'])) {
+					unlink($pathinfo['dirname'] . '/' . $pathinfo['basename']);
+				}
+
+				if (is_dir($pathinfo['dirname'])) {
+					// delete folder even if not empty
+					shell_exec('rm -rf ' . escapeshellarg($pathinfo['dirname']));
+				}
+
+				$this->media()->delete($v->id);
+			}
+		}
+	}
+
+	protected function setOperation(string $operation)
+	{
+		$this->operation = $operation;
+	}
 }

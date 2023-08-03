@@ -1,80 +1,52 @@
 <?php
 
-namespace App\Database\Migrations;
+namespace App\Models;
 
-use CodeIgniter\Database\Migration;
+use CodeIgniter\Model;
 
-class CreateMedia extends Migration
+class Media extends Model
 {
-    public function up()
-    {
-        $this->forge->addField([
-            'id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'auto_increment' => true,
-            ],
-            'model_type' => [
-                'type' => 'VARCHAR',
-                'constraint' => 255,
-            ],
-            'model_id' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-            ],
-            'unique_name' => [
-                'type' => 'VARCHAR',
-                'constraint' => 255
-            ],
-            'collection_name' => [
-                'type' => 'VARCHAR',
-                'constraint' => 255
-            ],
-            'file_name' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-            ],
-            'file_type' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-            ],
-            'file_size' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-            ],
-            'file_ext' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-            ],
-            'file_path' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-            ],
-            'orig_name' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-            ],
-            'created_at' => [
-                'type' => 'DATETIME',
-                'null' => true
-            ],
-            'updated_at' => [
-                'type' => 'DATETIME',
-                'null' => true
-            ],
-            'delete_at' => [
-                'type' => 'DATETIME',
-                'null' => true
-            ]
-        ]);
+    protected $DBGroup          = 'default';
+    protected $table            = 'medias';
+    protected $primaryKey       = 'id';
+    protected $useAutoIncrement = true;
+    protected $returnType       = 'object';
+    protected $useSoftDeletes   = false;
+    protected $protectFields    = true;
+    protected $allowedFields    = [
+        'model_type',
+        'model_id',
+        'unique_name',
+        'collection_name',
+        'file_name',
+        'file_type',
+        'file_size',
+        'file_ext',
+        'file_path',
+        'orig_name',
+    ];
 
-        $this->forge->addKey('id', true);
-        $this->forge->addUniqueKey('uuid');
-        $this->forge->createTable('medias');
-    }
+    // Dates
+    protected $useTimestamps = true;
+    protected $dateFormat    = 'datetime';
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
+    protected $deletedField  = 'deleted_at';
 
-    public function down()
-    {
-        $this->forge->dropTable('medias');
-    }
+    // Validation
+    protected $validationRules      = [];
+    protected $validationMessages   = [];
+    protected $skipValidation       = false;
+    protected $cleanValidationRules = true;
+
+    // Callbacks
+    protected $allowCallbacks = true;
+    protected $beforeInsert   = [];
+    protected $afterInsert    = [];
+    protected $beforeUpdate   = [];
+    protected $afterUpdate    = [];
+    protected $beforeFind     = [];
+    protected $afterFind      = [];
+    protected $beforeDelete   = [];
+    protected $afterDelete    = [];
 }

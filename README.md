@@ -1,4 +1,4 @@
-#Codeigniter4-Media
+# Codeigniter4-Media
 Codeigniter package for to handle media upload file task (at least help a bit for my current job). My main goal on this package is codeigniter 4 have a library that be able to handle task such as organize file upload with minimial line of code
 
 # Installation
@@ -22,7 +22,6 @@ class User extends Model implements HasMedia
 
 done
 
-
 ## How to use?
 
 ### Store single File
@@ -40,6 +39,17 @@ using name attribute of html input to let codeigniter4-media get the file, and a
 ### Delete file - whole file in "users" collection
 
 `$this->users_model->findWithMedia($id)->clearMediaCollection('users');`
+
+### API Mode - Store File
+
+create method in your controller just like this, set asTemp to true if you want to return the file metadata (this is useful if you want to show the file right after upload process completed, make sure to return it)
+
+```php
+public function api_upload()
+{
+    return $this->users_model->addMediaFromRequest('file')->toMediaCollection('users')->of($this->request->getVar('user_id'))->asTemp(true);
+}
+```
 
 ## Notes
 

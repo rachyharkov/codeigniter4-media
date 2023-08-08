@@ -51,6 +51,23 @@ public function api_upload()
 }
 ```
 
+you will get this response
+
+```json
+{
+    collection_name: "users"
+    file_ext: "jpg"
+    file_name: "default"
+    file_path: "uploads/users/temp"
+    file_size: 62431
+    file_type: "image/jpeg"
+    model_id: "200090"
+    model_type: "App\\Models\\User"
+    orig_name: "20211128_165410.jpg"
+    unique_name:  "1691502324_94b5e01970c97f5ac670.jpg"
+}
+```
+
 ## Notes
 
 Sorry if it looks completely messed up, i'm still develop an approach and functionality that might work like spatie media laravel.

@@ -1,7 +1,29 @@
 #Codeigniter4-Media
 Codeigniter package for to handle media upload file task (at least help a bit for my current job). My main goal on this package is codeigniter 4 have a library that be able to handle task such as organize file upload with minimial line of code
 
-## how to use?
+# Installation
+
+`composer require rachyharkov/codeigniter4-media`
+
+just set your model like this
+
+```
+use CodeIgniter\Model;
+use Rachyharkov\CodeigniterMedia\HasMedia;
+use Rachyharkov\CodeigniterMedia\InteractsWithMedia;
+
+class User extends Model implements HasMedia
+{
+    use InteractsWithMedia;
+
+    // rest of codes
+}
+```
+
+done
+
+
+## How to use?
 
 ### Store single File
 

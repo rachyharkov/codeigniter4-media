@@ -18,5 +18,12 @@
             "Rachyharkov\\CodeigniterMedia\\": "src/"
         }
     },
-    "minimum-stability": "dev"
+    "minimum-stability": "dev",
+    "scripts" : {
+        "post-install-cmd" : [
+            "php -r \"copy('table/CreateMedia.php', 'app/Database/Migrations/2019-08-01-092856_CreateMedia.php.php');\"",
+            "php -r \"mkdir('public/media');\"",
+            "php -r \"copy('assets/no-image.png', 'public/media/no-image.png');\""
+        ]
+    }
 }

@@ -25,6 +25,8 @@ trait InteractsWithMedia
 
 	protected $uploaded_path;
 
+	protected $no_image = false;
+
 	
 	public function media(): Model
 	{
@@ -43,6 +45,12 @@ trait InteractsWithMedia
 		$this->media_builder = $this->media()->where('model_id', $this->model_id);
 		return $this;
 	}
+
+	/**
+	 * Get input file from request and validate it
+	 * @param $file
+	 * @throws ValidationException
+	 */
 
 	public function addMediaFromRequest($field): self
 	{
@@ -96,6 +104,16 @@ trait InteractsWithMedia
 		}
 	}
 
+	protected function generateFolderTemp()
+	{
+		$temp_path = $this->default_path . $this->temp_media_data['collection_name'] . '/temp';
+		if (!is_dir(ROOTPATH . 'public/'. $temp_path)) {
+			mkdir(ROOTPATH . 'public/'. $temp_path, 0777, true);
+		}
+
+		return $temp_path;
+	}
+
 	public function of($id)
 	{
 		$this->model_id = $id;
@@ -107,7 +125,65 @@ trait InteractsWithMedia
 			$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
 			
 			$this->storeMedia();
+
+			return $this;
 		}
+
+		// if ($this->operation == 'update')
+		// {
+		// 	$this->generateFolder($this->default_path, $this->collectionName);
+
+		// 	$this->updateMedia();
+
+		// 	return;
+		// }
+
+		// if ($this->operation == 'delete')
+		// {
+		// 	$this->deleteMedia();
+
+		// 	return;
+		// }
+
+		return $this;
+	}
+
+	// public function returnData(bool $json = false, bool $api_response = false)
+	// {
+	// 	if ($json === true && $api_response === true) {
+	// 		header('Content-Type: application/json');
+	// 		return response()->setJSON($this->temp_media_data);
+	// 	}
+
+	// 	if ($json === true) {
+	// 		return json_encode($this->temp_media_data);
+	// 	}
+	// 	return $this->temp_media_data;
+	// }
+
+	public function asTemp(bool $is_api_request = false)
+	{
+		$temp_path = $this->generateFolderTemp();
+		
+		$this->temp_media_data['file_path'] = $temp_path;
+
+		$this->moveFile(
+			ROOTPATH . 'public/' . $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'],
+			ROOTPATH . 'public/' . $this->default_path . $this->temp_media_data['collection_name'] . '/' . $this->temp_media_data['unique_name']
+		);
+
+		if ($is_api_request === true) {
+			header('Content-Type: application/json');
+			return response()->setJSON($this->temp_media_data);
+		}
+
+		return $this;
+	}
+
+	protected function moveFile(string $path_before, string $path_after)
+	{
+		dd($path_before, $path_after);
+		shell_exec('mv ' . $path_before . ' ' . $path_after);
 	}
 
 	/**
@@ -127,7 +203,18 @@ trait InteractsWithMedia
 			return $this->media_builder = $this->media_builder->where('collection_name', $collectionName)->findAll();
 		}
 
+		if($this->media_builder->where('collection_name', $collectionName)->countAllResults() > 0) {
+			return $this;
+		}
+
+		$this->no_image = true;
 		return $this;
+	}
+
+	protected function noImage()
+	{
+		$this->setDefaultPath();
+		return base_url($this->default_path . 'no-image.jpg');
 	}
 
 
@@ -145,6 +232,9 @@ trait InteractsWithMedia
 		$this->generateFileName();
 
 		$this->media()->insert($this->temp_media_data);
+
+		$this->removeOldFile();
+
 		$this->media_file->move(
 			ROOTPATH . 'public/'. $this->temp_media_data['file_path'], 
 			$this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext']
@@ -157,6 +247,21 @@ trait InteractsWithMedia
 	protected function generateFileName()
 	{
 		$this->temp_media_data['file_name'] = 'default';
+	}
+
+	protected function checkFileExists()
+	{
+		if (file_exists(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext'])) {
+			return true;
+		}
+		return false;
+	}
+
+	protected function removeOldFile()
+	{
+		if ($this->checkFileExists()) {
+			unlink(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext']);
+		}
 	}
 
 	/**
@@ -185,6 +290,9 @@ trait InteractsWithMedia
 	 */
 	public function getFirstMedia()
 	{
+		if ($this->no_image === true) {
+			return $this->noImage();
+		}
 		return $this->media_builder->first();
 	}
 
@@ -194,6 +302,10 @@ trait InteractsWithMedia
 	 */
 	public function getFirstMediaUrl()
 	{
+		if ($this->no_image === true) {
+			return $this->noImage();
+		}
+
 		$media = $this->getFirstMedia();
 		if ($media) {
 			return base_url($media->file_path .'/'. $media->file_name.'.'.$media->file_ext);
@@ -203,22 +315,15 @@ trait InteractsWithMedia
 
 	public function clearMediaCollection(string $collectionName = 'default')
 	{
-		// dd($this->media_builder->where('collection_name', $collectionName)->findAll());
 		$p = $this->media_builder->where('collection_name', $collectionName)->findAll();
 
 		if (count($p) > 0) {
 			foreach ($p as $k => $v) {
 				$pathinfo = pathinfo(ROOTPATH .'public/'. $v->file_path . $v->file_name);
 
-				if (file_exists($pathinfo['dirname'] . '/' . $pathinfo['basename'])) {
-					unlink($pathinfo['dirname'] . '/' . $pathinfo['basename']);
-				}
-
 				if (is_dir($pathinfo['dirname'])) {
-					// delete folder even if not empty
-					shell_exec('rm -rf ' . escapeshellarg($pathinfo['dirname']));
+					shell_exec('rm -rf ' . escapeshellarg($pathinfo['dirname'] . '/' . $v->model_id));
 				}
-
 				$this->media()->delete($v->id);
 			}
 		}

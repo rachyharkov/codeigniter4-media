@@ -10,17 +10,19 @@ class CreateMedia extends Migration
     {
         $this->forge->addField([
             'id' => [
-                'type' => 'INT',
+                'type' => 'BIGINT',
                 'constraint' => 11,
                 'auto_increment' => true,
             ],
             'model_type' => [
                 'type' => 'VARCHAR',
                 'constraint' => 255,
+                'null' => true
             ],
             'model_id' => [
                 'type' => 'VARCHAR',
                 'constraint' => 100,
+                'null' => true
             ],
             'unique_name' => [
                 'type' => 'VARCHAR',

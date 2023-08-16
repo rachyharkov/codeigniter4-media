@@ -15,6 +15,7 @@ interface HasMedia {
 	 * @throws ValidationException
 	 */
   public function toMediaCollection(string $collectionName = 'default'): self;
+  public function mediaCollectionOf(string $collectionName = 'default');
   public function findWithMedia(string $id);
   public function getCollection(string $collectionName = 'default', bool $return_result = false);
   public function clearMediaCollection(string $collectionName = 'default');
@@ -23,4 +24,5 @@ interface HasMedia {
   public function getFirstMediaUrl();
   public function of(string $id);
   public function asTemp(bool $is_api_request = false);
+  public function clearTempMedia(string $id_media = null);
 }

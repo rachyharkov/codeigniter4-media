@@ -56,7 +56,29 @@ trait InteractsWithMedia
 	{
 		$this->setOperation('add');
 		$this->validateFile(request()->getFile($field));
+		$this->media_file = request()->getFile($field);
 		return $this;
+	}
+
+
+	public function clearTempMedia(string $unique_name = null, bool $is_api_request = true)
+	{
+		$media = $this->media()->where('unique_name', $unique_name)->first();
+		if ($media)
+			$pathinfo = pathinfo(ROOTPATH .'public/'. $media->file_path .'/'. $media->file_name);
+			if (is_dir($pathinfo['dirname'])) {
+				if(file_exists($pathinfo['dirname'] . '/' . $media->file_name)) {
+					shell_exec('rm ' . escapeshellarg($pathinfo['dirname'] . '/' . $media->file_name));
+				}
+			}
+			$this->media()->delete($media->id);
+
+		if ($is_api_request === true) {
+			$resp['status'] = 'success';
+			$resp['message'] = 'File '.$unique_name.' deleted successfully';
+			header('Content-Type: application/json');
+			return response()->setJSON($resp)->setStatusCode(200, 'OK');
+		}
 	}
 
 
@@ -68,11 +90,11 @@ trait InteractsWithMedia
 	 */
 	public function toMediaCollection(string $collectionName = 'default'): self
 	{
-
+		$randomNameWithoutExtension = explode('.', $this->media_file->getRandomName())[0];
 		$this->temp_media_data = [
 			'model_type' => get_class($this),
 			'model_id' => null,
-			'unique_name' => $this->media_file->getRandomName(),
+			'unique_name' => $randomNameWithoutExtension,
 			'collection_name' => $collectionName,
 			'file_name' => null,
 			'file_type' => $this->media_file->getClientMimeType(),
@@ -84,6 +106,44 @@ trait InteractsWithMedia
 
 		$this->setDefaultPath();
 		return $this;
+	}
+
+	public function asTemp(bool $is_api_request = false)
+	{
+		$temp_path = $this->generateFolderTemp();
+		
+		$this->temp_media_data['file_path'] = $temp_path;
+		$this->temp_media_data['file_name'] = $this->temp_media_data['unique_name'].'.'.$this->temp_media_data['file_ext'];
+
+		$this->storeMedia();
+
+		if ($is_api_request === true) {
+			$resp['data'] = $this->temp_media_data;
+			$resp['status'] = 'success';
+			$resp['message'] = 'File uploaded successfully';
+			header('Content-Type: application/json');
+			return response()->setJSON($resp)->setStatusCode(201, 'Created');
+		}
+
+		return $this;
+	}
+
+	protected function storeMedia()
+	{
+		if($this->temp_media_data['file_name'] == null) {
+			$this->generateFileName();
+		}
+
+		$this->media()->insert($this->temp_media_data);
+		$this->removeOldFile();
+		
+		$this->media_file->move(
+			ROOTPATH . 'public/'. $this->temp_media_data['file_path'], 
+			$this->temp_media_data['file_name']
+		);
+
+		// destroy the file object
+		$this->media_file = null;
 	}
 
 	protected function setDefaultPath(string $root_path = 'uploads/')
@@ -112,6 +172,12 @@ trait InteractsWithMedia
 		}
 
 		return $temp_path;
+	}
+
+	public function mediaCollectionOf(string $collectionName = 'default')
+	{
+		$this->collectionName = $collectionName;
+		return $this;
 	}
 
 	public function of($id)
@@ -148,41 +214,8 @@ trait InteractsWithMedia
 		return $this;
 	}
 
-	// public function returnData(bool $json = false, bool $api_response = false)
-	// {
-	// 	if ($json === true && $api_response === true) {
-	// 		header('Content-Type: application/json');
-	// 		return response()->setJSON($this->temp_media_data);
-	// 	}
-
-	// 	if ($json === true) {
-	// 		return json_encode($this->temp_media_data);
-	// 	}
-	// 	return $this->temp_media_data;
-	// }
-
-	public function asTemp(bool $is_api_request = false)
-	{
-		$temp_path = $this->generateFolderTemp();
-		
-		$this->temp_media_data['file_path'] = $temp_path;
-
-		$this->moveFile(
-			ROOTPATH . 'public/' . $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'],
-			ROOTPATH . 'public/' . $this->default_path . $this->temp_media_data['collection_name'] . '/' . $this->temp_media_data['unique_name']
-		);
-
-		if ($is_api_request === true) {
-			header('Content-Type: application/json');
-			return response()->setJSON($this->temp_media_data);
-		}
-
-		return $this;
-	}
-
 	protected function moveFile(string $path_before, string $path_after)
 	{
-		dd($path_before, $path_after);
 		shell_exec('mv ' . $path_before . ' ' . $path_after);
 	}
 
@@ -223,30 +256,12 @@ trait InteractsWithMedia
 		if (!$file->isValid()) {
 			return false;
 		}
-		$this->media_file = $file;
 	}
 
-	protected function storeMedia()
-	{
-		
-		$this->generateFileName();
-
-		$this->media()->insert($this->temp_media_data);
-
-		$this->removeOldFile();
-
-		$this->media_file->move(
-			ROOTPATH . 'public/'. $this->temp_media_data['file_path'], 
-			$this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext']
-		);
-
-		// destroy the file object
-		$this->media_file = null;
-	}
 
 	protected function generateFileName()
 	{
-		$this->temp_media_data['file_name'] = 'default';
+		$this->temp_media_data['file_name'] = 'default.'.$this->temp_media_data['file_ext'];
 	}
 
 	protected function checkFileExists()

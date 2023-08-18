@@ -27,6 +27,8 @@ trait InteractsWithMedia
 
 	protected $no_image = false;
 
+	protected $data_with_media;
+
 	
 	public function media(): Model
 	{
@@ -37,11 +39,20 @@ trait InteractsWithMedia
 	/**
 	 * This method is used to find model with media, always include this method before using other methods
 	 * @param string $id
+	 * @param bool $return_result
 	 * @return $this
 	 */
-	public function findWithMedia(string $id)
+	public function findWithMedia(string $id, bool $return_result = false)
 	{
 		$this->model_id = $id;
+		$this->data_with_media = $this->find($this->model_id);
+
+		if ($this->returnType == 'array') {
+			$this->data_with_media['media'] = $this->media()->where('model_id', $this->model_id);
+		} else {
+			$this->data_with_media->media = $this->media()->where('model_id', $this->model_id);
+		}
+
 		$this->media_builder = $this->media()->where('model_id', $this->model_id);
 		return $this;
 	}
@@ -128,12 +139,49 @@ trait InteractsWithMedia
 		return $this;
 	}
 
+	public function withInsertedData()
+	{
+		$this->model_id = $this->insertID();
+		$this->temp_media_data['model_id'] = $this->model_id;
+		$this->generateFileName();
+		$this->setDefaultPath();
+		$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
+		$this->storeMedia();
+		return $this;
+	}
+
+	public function withUpdatedData(string $id)
+	{
+		$this->model_id = $id;
+		$this->temp_media_data['model_id'] = $this->model_id;
+		$this->generateFileName();
+		$this->setDefaultPath();
+		$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
+		$this->updateMedia($this->model_id, $this->temp_media_data['model_type']);
+		return $this;
+	}
+
 	protected function storeMedia()
 	{
 		if($this->temp_media_data['file_name'] == null) {
 			$this->generateFileName();
 		}
 
+		$this->media()->insert($this->temp_media_data);
+		$this->removeOldFile();
+		
+		$this->media_file->move(
+			ROOTPATH . 'public/'. $this->temp_media_data['file_path'], 
+			$this->temp_media_data['file_name']
+		);
+
+		// destroy the file object
+		$this->media_file = null;
+	}
+
+	protected function updateMedia(string $id, string $model_type)
+	{
+		$this->media()->where('model_id', $id)->where('model_type', $model_type)->delete();
 		$this->media()->insert($this->temp_media_data);
 		$this->removeOldFile();
 		
@@ -177,40 +225,7 @@ trait InteractsWithMedia
 	public function mediaCollectionOf(string $collectionName = 'default')
 	{
 		$this->collectionName = $collectionName;
-		return $this;
-	}
-
-	public function of($id)
-	{
-		$this->model_id = $id;
-
-		if ($this->operation == 'add')
-		{
-			$this->temp_media_data['model_id'] = $this->model_id;
-
-			$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
-			
-			$this->storeMedia();
-
-			return $this;
-		}
-
-		// if ($this->operation == 'update')
-		// {
-		// 	$this->generateFolder($this->default_path, $this->collectionName);
-
-		// 	$this->updateMedia();
-
-		// 	return;
-		// }
-
-		// if ($this->operation == 'delete')
-		// {
-		// 	$this->deleteMedia();
-
-		// 	return;
-		// }
-
+		$this->media_builder = $this->media()->where('collection_name', $this->collectionName);
 		return $this;
 	}
 
@@ -222,21 +237,44 @@ trait InteractsWithMedia
 	/**
 	 * get media collection
 	 * @param string $collectionName use default if not set
-	 * @param bool $returnResult return result or not
+	 * @param bool $return_result return result or not
 	 * @return $this|Model
 	 * @throws ValidationException
 	 */
-	public function getCollection(string $collectionName = 'default', bool $returnResult = false)
+	public function getCollection(string $collectionName = 'default', bool $return_result = false)
 	{
-		if ($returnResult === true && $collectionName === '*') {
-			return $this->media_builder = $this->media_builder->findAll();
+		if ($return_result === true && $collectionName === '*') {
+			if(is_object($this->data_with_media)) {
+				$this->data_with_media->media = $this->data_with_media->media->findAll();
+				return $this->data_with_media;
+			} else {
+				$this->data_with_media['media'] = $this->data_with_media['media']->findAll();
+				return $this->data_with_media;
+			}
 		}
 
-		if ($returnResult === true) {
-			return $this->media_builder = $this->media_builder->where('collection_name', $collectionName)->findAll();
+		if ($return_result === true) {
+			if(is_object($this->data_with_media)) {
+				$this->data_with_media->media = $this->data_with_media->media->where('collection_name', $collectionName)->findAll();
+				return $this->data_with_media;
+			} else {
+				$this->data_with_media['media'] = $this->data_with_media['media']->where('collection_name', $collectionName)->findAll();
+				return $this->data_with_media;
+			}
 		}
 
-		if($this->media_builder->where('collection_name', $collectionName)->countAllResults() > 0) {
+		$count_result = 0;
+
+		if(is_object($this->data_with_media)) {
+			$this->data_with_media->media = $this->data_with_media->media->where('collection_name', $collectionName);
+			$count_result = $this->data_with_media->media->countAllResults();
+		} else {
+			$this->data_with_media['media'] = $this->data_with_media['media']->where('collection_name', $collectionName);
+			$count_result = $this->data_with_media['media']->countAllResults();
+		}
+
+		// dd($count_result);
+		if($count_result > 0) {
 			return $this;
 		}
 
@@ -266,7 +304,7 @@ trait InteractsWithMedia
 
 	protected function checkFileExists()
 	{
-		if (file_exists(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext'])) {
+		if (file_exists(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'])) {
 			return true;
 		}
 		return false;
@@ -275,28 +313,8 @@ trait InteractsWithMedia
 	protected function removeOldFile()
 	{
 		if ($this->checkFileExists()) {
-			unlink(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext']);
+			unlink(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name']);
 		}
-	}
-
-	/**
-	 * get media data, best used with where clause
-	 * @param string $collectionName
-	 * @return mixed
-	 */
-	public function getMedia(string $collectionName = 'default')
-	{
-		$data = $this->findAll();
-
-		foreach ($data as $key => $value) {
-
-			if ($this->returnType == 'array') {
-				$data[$key]['media'] = $this->media()->where('model_id', $value->id)->where('collection_name', $collectionName)->findAll();
-			} else {
-				$data[$key]->media = $this->media()->where('model_id', $value->id)->where('collection_name', $collectionName)->findAll();
-			}
-		}
-		return $data;
 	}
 
 	/**
@@ -306,9 +324,20 @@ trait InteractsWithMedia
 	public function getFirstMedia()
 	{
 		if ($this->no_image === true) {
-			return $this->noImage();
+			if(is_object($this->data_with_media))
+				$this->data_with_media->media = $this->noImage();
+			else
+				$this->data_with_media['media'] = $this->noImage();
+			return $this->data_with_media;
 		}
-		return $this->media_builder->first();
+
+		if(is_object($this->data_with_media)) {
+			$this->data_with_media->media = $this->data_with_media->media->first();
+			return $this->data_with_media;
+		} else {
+			$this->data_with_media['media'] = $this->data_with_media['media']->first();
+			return $this->data_with_media;
+		}
 	}
 
 	/**
@@ -317,20 +346,20 @@ trait InteractsWithMedia
 	 */
 	public function getFirstMediaUrl()
 	{
-		if ($this->no_image === true) {
-			return $this->noImage();
-		}
+		// if ($this->no_image === true) {
+		// 	return $this->noImage();
+		// }
 
-		$media = $this->getFirstMedia();
-		if ($media) {
-			return base_url($media->file_path .'/'. $media->file_name.'.'.$media->file_ext);
-		}
-		return null;
+		// $media = $this->getFirstMedia();
+		// if ($media) {
+		// 	return base_url($media->file_path .'/'. $media->file_name.'.'.$media->file_ext);
+		// }
+		// return null;
 	}
 
-	public function clearMediaCollection(string $collectionName = 'default')
+	public function clearMediaCollection($id = null)
 	{
-		$p = $this->media_builder->where('collection_name', $collectionName)->findAll();
+		$p = $this->media_builder->where('model_id', $id)->findAll();
 
 		if (count($p) > 0) {
 			foreach ($p as $k => $v) {

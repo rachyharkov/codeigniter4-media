@@ -38,7 +38,7 @@ using name attribute of html input to let codeigniter4-media get the file, and a
 ```php
 
 $this->data['user'] = $this->user_model->where('id', $id)->first();
-$this->data['user']->photo = $this->user_model->mediaOf($this->data['user']->id,'user_photo')->getFirstMedia();
+$this->data['user']->photo = $this->user_model->mediaOf($this->data['user']->id,'profile_photo')->getFirstMedia();
 
 return view('user/edit', $data);
 
@@ -52,9 +52,10 @@ above will return null if no file meta information returned, handle it like this
 
 ### Get Single File - Just URL
 
+This is the example of how to assign new object to existing object (for example user object) with new property (photo) that contains the url of file
 ```php
 
-$this->data['user']->photo = $this->user_model->mediaOf($this->data['user']->id,'user_photo')->getFirstMediaUrl();
+$this->data['user']->photo = $this->user_model->mediaOf($this->data['user']->id,'profile_photo')->getFirstMediaUrl();
 
 return view('user/edit', $data);
 
@@ -65,7 +66,7 @@ return view('user/edit', $data);
 Just return true on third parameter, if not specified, then you are trying to get the first file of collection indeed
 
 ```php
-    $data['user'] = $this->user_model->mediaOf($user_id, 'user_photo', true);
+    $data['user']->collection_of_photo_profile = $this->user_model->mediaOf($user_id, 'profile_photo', true);
 
     return view('user/edit', $data);
 ```

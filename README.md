@@ -74,7 +74,7 @@ Just return true on third parameter, if not specified, then you are trying to ge
 
 ```php
     $this->user_model->delete($id); // just general delete method
-    $this->user_model->mediaCollectionOf('profile_photo')->clearMediaCollection($id);
+    $this->user_model->mediaOf($id, 'profile_photo')->clearMediaCollection();
 ```
 
 ### API Mode
@@ -118,7 +118,7 @@ you will get this response
 
     public function api_delete()
     {
-        return $this->user_model->mediaCollectionOf('announcement_attachment')->clearTempMedia(request()->getVar('temp_id'));
+        return $this->user_model->clearTempMedia(request()->getVar('temp_id'), 'profile_photo');
     }
 ```
 

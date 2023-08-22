@@ -301,13 +301,11 @@ trait InteractsWithMedia
 	}
 
 	/**
-	 * clear media collection, need id of who owns it
-	 * @param string|null $id
-	 */
-	public function clearMediaCollection($id = null)
+   * clear from media collection
+   */
+	public function clearMediaCollection()
 	{
-		$p = $this->media_builder->where('model_id', $id)->findAll();
-
+		$p = $this->media_builder->findAll();
 		if (count($p) > 0) {
 			foreach ($p as $k => $v) {
 				$pathinfo = pathinfo(ROOTPATH .'public/'. $v->file_path . $v->file_name);

@@ -32,10 +32,9 @@ interface HasMedia {
   public function mediaOf(string $id, string $collectionName = 'default');
 
   /**
-  * clear media collection, need id of who owns it
-  * @param string|null $id
+  * clear from media collection
   */
-  public function clearMediaCollection(string $id);
+  public function clearMediaCollection();
   
   /**
 	* get first media metadata
@@ -60,7 +59,7 @@ interface HasMedia {
   * clear temp media, need unique name of who owns it, you can get it from asTemp() method before, you may specify it as api request or not by passing true or false to see the response
   * @param string|null $id
   */
-  public function clearTempMedia(string $id_media = null);
+  public function clearTempMedia(string $temp_id = null, bool $is_api_request = true);
 
   /**
    * Replace media with new one, you may specify addMediaFromRequest('photo') then toMediaCollection('announcement_photo')

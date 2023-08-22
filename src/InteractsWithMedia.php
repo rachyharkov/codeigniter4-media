@@ -5,6 +5,7 @@ namespace App\Libraries\backend;
 use App\Models\Media;
 use CodeIgniter\Model;
 use CodeIgniter\Validation\Exceptions\ValidationException;
+use PhpParser\Node\Stmt\Return_;
 
 trait InteractsWithMedia
 {
@@ -25,10 +26,7 @@ trait InteractsWithMedia
 
 	protected $uploaded_path;
 
-	protected $no_image = false;
-
-	protected $data_with_media;
-
+	protected $results;
 	
 	public function media(): Model
 	{
@@ -37,23 +35,23 @@ trait InteractsWithMedia
 	}
 
 	/**
-	 * This method is used to find model with media, always include this method before using other methods
+	 * Find media by who owns it, and which collection you want to get
 	 * @param string $id
+	 * @param string $collectionName
 	 * @param bool $return_result
 	 * @return $this
 	 */
-	public function findWithMedia(string $id, bool $return_result = false)
+	public function mediaOf(string $id, string $collectionName = 'default', bool $return_result = false)
 	{
 		$this->model_id = $id;
-		$this->data_with_media = $this->find($this->model_id);
+		$this->collectionName = $collectionName;
 
-		if ($this->returnType == 'array') {
-			$this->data_with_media['media'] = $this->media()->where('model_id', $this->model_id);
-		} else {
-			$this->data_with_media->media = $this->media()->where('model_id', $this->model_id);
+		$this->media_builder = $this->media()->where('model_id', $this->model_id)->where('collection_name', $this->collectionName);
+
+		if ($return_result === true) {
+			return $this->media_builder->findAll();
 		}
 
-		$this->media_builder = $this->media()->where('model_id', $this->model_id);
 		return $this;
 	}
 
@@ -72,6 +70,10 @@ trait InteractsWithMedia
 	}
 
 
+	/**
+	 * clear temp media, need unique name of who owns it, you can get it from asTemp() method before, you may specify it as api request or not by passing true or false to see the response
+	 * @param string|null $id
+	 */
 	public function clearTempMedia(string $unique_name = null, bool $is_api_request = true)
 	{
 		$media = $this->media()->where('unique_name', $unique_name)->first();
@@ -119,6 +121,11 @@ trait InteractsWithMedia
 		return $this;
 	}
 
+	/**
+	 * add media to collection but as temp file without labelling who owns it, you may specify it as api request or not by passing true or false
+	 * @param bool $is_api_request
+	 * @return $this
+	 */
 	public function asTemp(bool $is_api_request = false)
 	{
 		$temp_path = $this->generateFolderTemp();
@@ -139,6 +146,10 @@ trait InteractsWithMedia
 		return $this;
 	}
 
+	/**
+   * Store media based on last inserted data (those inserted data is the owner of the stored media), this method doing it's own after execute codeigniter's insert() operation 
+   * @return $this
+   */
 	public function withInsertedData()
 	{
 		$this->model_id = $this->insertID();
@@ -150,6 +161,11 @@ trait InteractsWithMedia
 		return $this;
 	}
 
+	
+	/**
+   * Replace media with new one, need id who belongs to. you may specify addMediaFromRequest('photo') then toMediaCollection('announcement_photo')
+   * @return $this
+   */
 	public function withUpdatedData(string $id)
 	{
 		$this->model_id = $id;
@@ -222,64 +238,9 @@ trait InteractsWithMedia
 		return $temp_path;
 	}
 
-	public function mediaCollectionOf(string $collectionName = 'default')
-	{
-		$this->collectionName = $collectionName;
-		$this->media_builder = $this->media()->where('collection_name', $this->collectionName);
-		return $this;
-	}
-
 	protected function moveFile(string $path_before, string $path_after)
 	{
 		shell_exec('mv ' . $path_before . ' ' . $path_after);
-	}
-
-	/**
-	 * get media collection
-	 * @param string $collectionName use default if not set
-	 * @param bool $return_result return result or not
-	 * @return $this|Model
-	 * @throws ValidationException
-	 */
-	public function getCollection(string $collectionName = 'default', bool $return_result = false)
-	{
-		if ($return_result === true && $collectionName === '*') {
-			if(is_object($this->data_with_media)) {
-				$this->data_with_media->media = $this->data_with_media->media->findAll();
-				return $this->data_with_media;
-			} else {
-				$this->data_with_media['media'] = $this->data_with_media['media']->findAll();
-				return $this->data_with_media;
-			}
-		}
-
-		if ($return_result === true) {
-			if(is_object($this->data_with_media)) {
-				$this->data_with_media->media = $this->data_with_media->media->where('collection_name', $collectionName)->findAll();
-				return $this->data_with_media;
-			} else {
-				$this->data_with_media['media'] = $this->data_with_media['media']->where('collection_name', $collectionName)->findAll();
-				return $this->data_with_media;
-			}
-		}
-
-		$count_result = 0;
-
-		if(is_object($this->data_with_media)) {
-			$this->data_with_media->media = $this->data_with_media->media->where('collection_name', $collectionName);
-			$count_result = $this->data_with_media->media->countAllResults();
-		} else {
-			$this->data_with_media['media'] = $this->data_with_media['media']->where('collection_name', $collectionName);
-			$count_result = $this->data_with_media['media']->countAllResults();
-		}
-
-		// dd($count_result);
-		if($count_result > 0) {
-			return $this;
-		}
-
-		$this->no_image = true;
-		return $this;
 	}
 
 	protected function noImage()
@@ -318,45 +279,31 @@ trait InteractsWithMedia
 	}
 
 	/**
-	 * get first media data
+	 * get first media metadata
 	 * @return mixed
 	 */
 	public function getFirstMedia()
 	{
-		if ($this->no_image === true) {
-			if(is_object($this->data_with_media))
-				$this->data_with_media->media = $this->noImage();
-			else
-				$this->data_with_media['media'] = $this->noImage();
-			return $this->data_with_media;
-		}
-
-		if(is_object($this->data_with_media)) {
-			$this->data_with_media->media = $this->data_with_media->media->first();
-			return $this->data_with_media;
-		} else {
-			$this->data_with_media['media'] = $this->data_with_media['media']->first();
-			return $this->data_with_media;
-		}
+		return $this->media_builder->first();
 	}
 
 	/**
-	 * get first media url
+	 * just return url of first media
 	 * @return string|null
 	 */
 	public function getFirstMediaUrl()
 	{
-		// if ($this->no_image === true) {
-		// 	return $this->noImage();
-		// }
-
-		// $media = $this->getFirstMedia();
-		// if ($media) {
-		// 	return base_url($media->file_path .'/'. $media->file_name.'.'.$media->file_ext);
-		// }
-		// return null;
+		$media = $this->getFirstMedia();
+		if ($media) {
+			return base_url($media->file_path .'/'. $media->file_name.'.'.$media->file_ext);
+		}
+		return null;
 	}
 
+	/**
+	 * clear media collection, need id of who owns it
+	 * @param string|null $id
+	 */
 	public function clearMediaCollection($id = null)
 	{
 		$p = $this->media_builder->where('model_id', $id)->findAll();

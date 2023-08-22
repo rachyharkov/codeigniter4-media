@@ -33,26 +33,39 @@ using name attribute of html input to let codeigniter4-media get the file, and a
     $this->user_model->addMediaFromRequest('photo')->toMediaCollection('profile_photo')->withInsertedData();
 ```
 
-### Get File
+### Get Single File - Metadata
 
 ```php
 
-$data['user'] = $this->user_model->findWithMedia($id)->getCollection('profile_photo')->getFirstMedia();
+$this->data['user'] = $this->user_model->where('id', $id)->first();
+$this->data['user']->photo = $this->user_model->mediaOf($this->data['user']->id,'user_photo')->getFirstMedia();
 
 return view('user/edit', $data);
 
 ```
 
-above will return string of no_image url fallback if no object of with file meta information returned, all you must can is by using is_object() like this
+above will return null if no file meta information returned, handle it like this
 
 ```php
-    <img src="<?= is_object($user->media) ? $user->media->file_path.'/'.$user->media->file_name : $user->media ?>" alt="User Photo Profile">
+    <img src="<?= $user->media ? $user->media->file_path.'/'.$user->media->file_name : $user->media ?>" alt="User Photo Profile">
 ```
 
-### Get All file of collection (upcoming)
+### Get Single File - Just URL
 
 ```php
-    $data['user'] = $this->user_model->findWithMedia($id)->getCollection('profile_photo', true);
+
+$this->data['user']->photo = $this->user_model->mediaOf($this->data['user']->id,'user_photo')->getFirstMediaUrl();
+
+return view('user/edit', $data);
+
+```
+
+### Get All file of collection
+
+Just return true on third parameter, if not specified, then you are trying to get the first file of collection indeed
+
+```php
+    $data['user'] = $this->user_model->mediaOf($user_id, 'user_photo', true);
 
     return view('user/edit', $data);
 ```

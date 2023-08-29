@@ -30,7 +30,7 @@ using name attribute of html input to let codeigniter4-media get the file, and a
 
 ```php
     $this->user_model->insert($data);
-    $this->user_model->addMediaFromRequest('photo')->toMediaCollection('profile_photo')->withInsertedData();
+    $this->user_model->addMediaFromRequest('photo')->toMediaCollection('profile_photo');
 ```
 
 ### Get Single File - Metadata
@@ -75,7 +75,7 @@ Just return true on third parameter, if not specified, then you are trying to ge
 
 ```php
     $this->user_model->delete($id); // just general delete method
-    $this->user_model->mediaOf($id, 'profile_photo')->clearMediaCollection();
+    $this->user_model->clearMediaCollection('profile_photo', $id);
 ```
 
 ### API Mode
@@ -88,7 +88,7 @@ create method in your controller just like this, set asTemp to true if you want 
 public function api_upload()
 {
     $user_id = $this->request->getVar('user_id');
-    return $this->user_model->addMediaFromRequest('file')->toMediaCollection('profile_photo')->asTemp(true);
+    return $this->user_model->addMediaFromRequest('file')->toMediaCollection('profile_photo')->responseJson();
 }
 ```
 
@@ -102,7 +102,7 @@ you will get this response
         collection_name: "profile_photo"
         file_ext: "jpg"
         file_name: "default"
-        file_path: "uploads/profile_photo/temp"
+        file_path: "uploads/profile_photo"
         file_size: 62431
         file_type: "image/jpeg"
         model_id: "200090"
@@ -119,7 +119,7 @@ you will get this response
 
     public function api_delete()
     {
-        return $this->user_model->clearTempMedia(request()->getVar('temp_id'), 'profile_photo');
+        return $this->user_model->clearMediaCollection(request()->getVar('temp_id'), 'profile_photo')->responseJson();
     }
 ```
 
@@ -133,6 +133,9 @@ You will get this response
 ```
 
 🪄 **Frontend Implementation**
+
+it's easy to using alpineJS, but most of you are JQuery user, soo here it is..
+
 Example using jquery
 
 Set your html like this

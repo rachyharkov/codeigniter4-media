@@ -33,6 +33,15 @@ using name attribute of html input to let codeigniter4-media get the file, and a
     $this->user_model->addMediaFromRequest('photo')->toMediaCollection('profile_photo');
 ```
 
+## Store single File - with custom name
+
+only use usingFileName method after addMediaFromRequest method, this will be useful if you want to rename the file before store it to database
+
+```php
+    $this->user_model->insert($data);
+    $this->user_model->addMediaFromRequest('photo')->usingFileName('data_'.random(20))->toMediaCollection('profile_photo');
+```
+
 ### Get Single File - Metadata
 
 ```php

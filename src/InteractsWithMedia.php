@@ -28,6 +28,8 @@ trait InteractsWithMedia
 
 	protected $uploaded_path;
 
+	protected $uploaded_file_name = null;
+
 	protected $results;
 	
 	public function media(): Model
@@ -95,6 +97,12 @@ trait InteractsWithMedia
 		}
 	}
 
+	public function usingFileName(string $name): self
+	{
+		$this->uploaded_file_name = $name;
+		return $this;
+	}
+
 
 	/**
 	 * add media to collection (folder and label)
@@ -112,7 +120,7 @@ trait InteractsWithMedia
 			'model_id' => $this->model_id,
 			'unique_name' => $randomNameWithoutExtension,
 			'collection_name' => $collectionName,
-			'file_name' => null,
+			'file_name' => $this->uploaded_file_name,
 			'file_type' => $this->media_file->getClientMimeType(),
 			'file_size' => $this->media_file->getSize(),
 			'file_path' => null,

@@ -54,4 +54,10 @@ interface HasMedia {
    */
   public function responseJson();
 
+  /**
+   * use specified name for uploaded file
+   * @return $this
+   */
+  public function usingFileName(string $name): self;
+
 }

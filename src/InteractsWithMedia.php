@@ -14,15 +14,17 @@ trait InteractsWithMedia
 
 	protected $model_id = null;
 
+	protected $media_id = null;
+
 	protected $media_builder;
 
 	protected $collectionName;
 
-	protected $operation; // add, update, delete
-
 	protected $temp_media_data;
 
 	protected $default_path;
+
+	protected $operation;
 
 	protected $uploaded_path;
 
@@ -63,7 +65,6 @@ trait InteractsWithMedia
 
 	public function addMediaFromRequest($field): self
 	{
-		$this->setOperation('add');
 		$this->validateFile(request()->getFile($field));
 		$this->media_file = request()->getFile($field);
 		return $this;
@@ -103,10 +104,12 @@ trait InteractsWithMedia
 	 */
 	public function toMediaCollection(string $collectionName = 'default'): self
 	{
+		$this->operation = 'add';
+
 		$randomNameWithoutExtension = explode('.', $this->media_file->getRandomName())[0];
 		$this->temp_media_data = [
 			'model_type' => get_class($this),
-			'model_id' => null,
+			'model_id' => $this->model_id,
 			'unique_name' => $randomNameWithoutExtension,
 			'collection_name' => $collectionName,
 			'file_name' => null,
@@ -117,8 +120,32 @@ trait InteractsWithMedia
 			'orig_name' => $this->media_file->getClientName(),
 		];
 
+		
 		$this->setDefaultPath();
-		return $this;
+		
+		
+		try {
+			//https://forum.codeigniter.com/showthread.php?tid=78276&pid=382975#pid382975
+			$this->model_id = $this->insertID();
+			$this->temp_media_data['model_id'] = $this->model_id;
+			$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
+			$this->storeMedia();
+
+			return $this;
+		} catch (\Throwable $th) {
+			if($this->model_id) {
+				$this->temp_media_data['model_id'] = $this->model_id;
+				$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
+				$this->storeMedia();
+	
+				return $this;
+			}
+	
+			$this->asTemp();
+			
+			return $this;
+		}
+
 	}
 
 	/**
@@ -126,7 +153,7 @@ trait InteractsWithMedia
 	 * @param bool $is_api_request
 	 * @return $this
 	 */
-	public function asTemp(bool $is_api_request = false)
+	protected function asTemp()
 	{
 		$temp_path = $this->generateFolderTemp();
 		
@@ -135,45 +162,6 @@ trait InteractsWithMedia
 
 		$this->storeMedia();
 
-		if ($is_api_request === true) {
-			$resp['data'] = $this->temp_media_data;
-			$resp['status'] = 'success';
-			$resp['message'] = 'File uploaded successfully';
-			header('Content-Type: application/json');
-			return response()->setJSON($resp)->setStatusCode(201, 'Created');
-		}
-
-		return $this;
-	}
-
-	/**
-   * Store media based on last inserted data (those inserted data is the owner of the stored media), this method doing it's own after execute codeigniter's insert() operation 
-   * @return $this
-   */
-	public function withInsertedData()
-	{
-		$this->model_id = $this->insertID();
-		$this->temp_media_data['model_id'] = $this->model_id;
-		$this->generateFileName();
-		$this->setDefaultPath();
-		$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
-		$this->storeMedia();
-		return $this;
-	}
-
-	
-	/**
-   * Replace media with new one, need id who belongs to. you may specify addMediaFromRequest('photo') then toMediaCollection('announcement_photo')
-   * @return $this
-   */
-	public function withUpdatedData(string $id)
-	{
-		$this->model_id = $id;
-		$this->temp_media_data['model_id'] = $this->model_id;
-		$this->generateFileName();
-		$this->setDefaultPath();
-		$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
-		$this->updateMedia($this->model_id, $this->temp_media_data['model_type']);
 		return $this;
 	}
 
@@ -184,21 +172,7 @@ trait InteractsWithMedia
 		}
 
 		$this->media()->insert($this->temp_media_data);
-		$this->removeOldFile();
-		
-		$this->media_file->move(
-			ROOTPATH . 'public/'. $this->temp_media_data['file_path'], 
-			$this->temp_media_data['file_name']
-		);
-
-		// destroy the file object
-		$this->media_file = null;
-	}
-
-	protected function updateMedia(string $id, string $model_type)
-	{
-		$this->media()->where('model_id', $id)->where('model_type', $model_type)->delete();
-		$this->media()->insert($this->temp_media_data);
+		$this->media_id = $this->media()->insertID();
 		$this->removeOldFile();
 		
 		$this->media_file->move(
@@ -230,7 +204,7 @@ trait InteractsWithMedia
 
 	protected function generateFolderTemp()
 	{
-		$temp_path = $this->default_path . $this->temp_media_data['collection_name'] . '/temp';
+		$temp_path = $this->default_path . $this->temp_media_data['collection_name'];
 		if (!is_dir(ROOTPATH . 'public/'. $temp_path)) {
 			mkdir(ROOTPATH . 'public/'. $temp_path, 0777, true);
 		}
@@ -238,9 +212,15 @@ trait InteractsWithMedia
 		return $temp_path;
 	}
 
-	protected function moveFile(string $path_before, string $path_after)
+	protected function moveFile(string $path_before, string $path_after, string $file_name)
 	{
-		shell_exec('mv ' . $path_before . ' ' . $path_after);
+		if (!is_dir(ROOTPATH . 'public/'. $path_after)) {
+			mkdir(ROOTPATH . 'public/'. $path_after, 0777, true);
+		}
+
+		shell_exec('mv ' . $path_before . '/' . $file_name . ' ' . $path_after . '/' . $file_name);
+		
+		$this->temp_media_data['file_path'] = $path_after;
 	}
 
 	protected function noImage()
@@ -303,9 +283,12 @@ trait InteractsWithMedia
 	/**
    * clear from media collection
    */
-	public function clearMediaCollection()
+	public function clearMediaCollection(string $collectionName = 'default', string $id = null)
 	{
-		$p = $this->media_builder->findAll();
+		$this->operation = 'delete';	
+
+		$this->model_id = $id;
+		$p = $this->media()->where('collection_name', $collectionName)->where('model_id', $id)->where('model_type', get_class($this))->findAll();
 		if (count($p) > 0) {
 			foreach ($p as $k => $v) {
 				$pathinfo = pathinfo(ROOTPATH .'public/'. $v->file_path . $v->file_name);
@@ -318,8 +301,27 @@ trait InteractsWithMedia
 		}
 	}
 
-	protected function setOperation(string $operation)
+	/**
+	 * return data as JSON (Used for API)
+	 * @return string
+	 */
+	public function responseJson()
 	{
-		$this->operation = $operation;
+
+		$message = null;
+
+		if($this->operation == 'add') {
+			$message = 'File uploaded successfully';
+		}
+		
+		if($this->operation == 'delete') {
+			$message = 'File deleted successfully';
+		}
+
+		$resp['data'] = $this->temp_media_data;
+		$resp['status'] = 'success';
+		$resp['message'] = $message;
+		header('Content-Type: application/json');
+		return response()->setJSON($resp)->setStatusCode(201, 'Created');
 	}
 }

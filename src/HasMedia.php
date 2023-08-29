@@ -34,7 +34,7 @@ interface HasMedia {
   /**
   * clear from media collection
   */
-  public function clearMediaCollection();
+  public function clearMediaCollection(string $collectionName = 'default', string $id = null);
   
   /**
 	* get first media metadata
@@ -49,27 +49,9 @@ interface HasMedia {
   public function getFirstMediaUrl();
 
   /**
-  * add media to collection but as temp file without labelling who owns it, you may specify it as api request or not by passing true or false
-  * @param bool $is_api_request
-  * @return $this
-  */
-  public function asTemp(bool $is_api_request = false);
-
-  /**
-  * clear temp media, need unique name of who owns it, you can get it from asTemp() method before, you may specify it as api request or not by passing true or false to see the response
-  * @param string|null $id
-  */
-  public function clearTempMedia(string $temp_id = null, bool $is_api_request = true);
-
-  /**
-   * Replace media with new one, you may specify addMediaFromRequest('photo') then toMediaCollection('announcement_photo')
-   * @return $this
+   * return data as JSON (Used for API)
+   * @return string
    */
-  public function withInsertedData();
+  public function responseJson();
 
-  /**
-   * Store media based on last inserted data (those inserted data is the owner of the stored media), this method doing it's own after execute codeigniter's insert() operation 
-   * @return $this
-   */
-  public function withUpdatedData(string $id);
 }

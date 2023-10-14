@@ -24,12 +24,12 @@ interface HasMedia {
 
   /**
   * Find media by who owns it, and which collection you want to get
-  * @param string $id
   * @param string $collectionName
-  * @param bool $return_result
+  * @param string $id (if not set, it will find all media in collection)
+  * @param bool $return_result (optional)
   * @return $this
   */
-  public function mediaOf(string $id, string $collectionName = 'default');
+  public function mediaOf(string $collectionName = 'default', string $id = null);
 
   /**
   * clear from media collection
@@ -49,10 +49,23 @@ interface HasMedia {
   public function getFirstMediaUrl();
 
   /**
+   * get all media metadata
+   * @return object
+   */
+  public function getAllMedia();
+
+  /**
    * return data as JSON (Used for API)
    * @return string
    */
   public function responseJson();
+
+  /**
+   * return location of media after uploaded
+   * @return string
+   */
+  public function getMediaLocation();
+
 
   /**
    * use specified name for uploaded file
@@ -60,4 +73,9 @@ interface HasMedia {
    */
   public function usingFileName(string $name): self;
 
+  /**
+   * attach custom properties to media
+   * @return $this
+   */
+  public function withCustomProperties(array $properties): self;
 }

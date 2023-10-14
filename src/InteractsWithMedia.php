@@ -40,23 +40,28 @@ trait InteractsWithMedia
 
 	/**
 	 * Find media by who owns it, and which collection you want to get
-	 * @param string $id
 	 * @param string $collectionName
-	 * @param bool $return_result
+	 * @param string $id (if not set, it will find all media in collection)
+	 * @param bool $return_result (optional)
 	 * @return $this
 	 */
-	public function mediaOf(string $id, string $collectionName = 'default', bool $return_result = false)
+	public function mediaOf(string $collectionName = 'default', string $id = null)
 	{
 		$this->model_id = $id;
 		$this->collectionName = $collectionName;
 
-		$this->media_builder = $this->media()->where('model_id', $this->model_id)->where('collection_name', $this->collectionName);
+		$this->media_builder = $this->media()->where('collection_name', $this->collectionName);
 
-		if ($return_result === true) {
-			return $this->media_builder->findAll();
+		if ($this->model_id) {
+			$this->media_builder->where('model_id', $this->model_id);
 		}
 
 		return $this;
+	}
+
+	public function getAllMedia()
+	{
+		return $this->media_builder->findAll();
 	}
 
 	/**
@@ -74,24 +79,24 @@ trait InteractsWithMedia
 
 
 	/**
-	 * clear temp media, need unique name of who owns it, you can get it from asTemp() method before, you may specify it as api request or not by passing true or false to see the response
+	 * clear temp media, need unique name of who owns it, you can get it from putItInCollection() method before, you may specify it as api request or not by passing true or false to see the response
 	 * @param string|null $id
 	 */
 	public function clearTempMedia(string $unique_name = null, bool $is_api_request = true)
 	{
 		$media = $this->media()->where('unique_name', $unique_name)->first();
 		if ($media)
-			$pathinfo = pathinfo(ROOTPATH .'public/'. $media->file_path .'/'. $media->file_name);
+			$pathinfo = pathinfo(ROOTPATH .'public/'. $media->file_path .'/'. $media->file_name . '.' . $media->file_ext);
 			if (is_dir($pathinfo['dirname'])) {
-				if(file_exists($pathinfo['dirname'] . '/' . $media->file_name)) {
-					shell_exec('rm ' . escapeshellarg($pathinfo['dirname'] . '/' . $media->file_name));
+				if(file_exists($pathinfo['dirname'] . '/' . $media->file_name . '.' . $media->file_ext)) {
+					shell_exec('rm ' . escapeshellarg($pathinfo['dirname'] . '/' . $media->file_name . '.' . $media->file_ext));
 				}
 			}
 			$this->media()->delete($media->id);
 
 		if ($is_api_request === true) {
 			$resp['status'] = 'success';
-			$resp['message'] = 'File '.$unique_name.' deleted successfully';
+			$resp['message'] = 'File deleted successfully';
 			header('Content-Type: application/json');
 			return response()->setJSON($resp)->setStatusCode(200, 'OK');
 		}
@@ -125,31 +130,31 @@ trait InteractsWithMedia
 			'file_size' => $this->media_file->getSize(),
 			'file_path' => null,
 			'file_ext' => $this->media_file->getExtension(),
-			'orig_name' => $this->media_file->getClientName(),
+			'orig_name' => basename($this->media_file->getClientName(), '.'.$this->media_file->getExtension()),
+			'custom_properties' => null
 		];
 
 		
 		$this->setDefaultPath();
 		
-		
+		// used to store after insert data operation
 		try {
 			//https://forum.codeigniter.com/showthread.php?tid=78276&pid=382975#pid382975
 			$this->model_id = $this->insertID();
 			$this->temp_media_data['model_id'] = $this->model_id;
-			$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
 			$this->storeMedia();
 
 			return $this;
-		} catch (\Throwable $th) {
-			if($this->model_id) {
+		} catch (\Throwable $th) {  
+			if($this->model_id) { // if model id is not null, then it means that the model is already inserted, so we can continue to store the media
 				$this->temp_media_data['model_id'] = $this->model_id;
-				$this->generateFolder($this->default_path, $this->temp_media_data['collection_name']);
+
 				$this->storeMedia();
 	
 				return $this;
 			}
-	
-			$this->asTemp();
+			// if model id is null, then it means the media not data-related, so we store it on collection
+			$this->putItInCollection();
 			
 			return $this;
 		}
@@ -161,15 +166,21 @@ trait InteractsWithMedia
 	 * @param bool $is_api_request
 	 * @return $this
 	 */
-	protected function asTemp()
+	protected function putItInCollection()
 	{
-		$temp_path = $this->generateFolderTemp();
+		$temp_path = $this->generateCollectionFolder();
 		
 		$this->temp_media_data['file_path'] = $temp_path;
-		$this->temp_media_data['file_name'] = $this->temp_media_data['unique_name'].'.'.$this->temp_media_data['file_ext'];
+		$this->temp_media_data['file_name'] = $this->temp_media_data['unique_name'];
 
 		$this->storeMedia();
 
+		return $this;
+	}
+
+	public function withCustomProperties(array $properties): self
+	{
+		$this->temp_media_data['custom_properties'] = json_encode($properties);
 		return $this;
 	}
 
@@ -178,14 +189,19 @@ trait InteractsWithMedia
 		if($this->temp_media_data['file_name'] == null) {
 			$this->generateFileName();
 		}
-
 		$this->media()->insert($this->temp_media_data);
-		$this->media_id = $this->media()->insertID();
+
+		$last_insert_id = $this->media()->insertID();
+
+		$this->generateFolder($this->default_path, $this->temp_media_data['collection_name'], $last_insert_id);
+
+		$this->media()->update($last_insert_id, ['file_path' => $this->temp_media_data['file_path']]);
+		
 		$this->removeOldFile();
 		
 		$this->media_file->move(
 			ROOTPATH . 'public/'. $this->temp_media_data['file_path'], 
-			$this->temp_media_data['file_name']
+			$this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext']
 		);
 
 		// destroy the file object
@@ -197,24 +213,24 @@ trait InteractsWithMedia
 		$this->default_path = $root_path;
 	}
 
-	protected function generateFolder(string $path, string $collectionName)
+	protected function generateFolder(string $path, string $collectionName, string $id)
 	{
 		if($this->model_id != null) {
 			
-			$user_path = $path . $collectionName . '/' . $this->model_id;
+			$user_path = $path . $collectionName . '/' . $id;
 			if (!is_dir(ROOTPATH . 'public/'. $user_path)) {
-				mkdir(ROOTPATH . 'public/'. $user_path, 0777, true);
+				mkdir(ROOTPATH . 'public/'. $user_path, 0755, true);
 			}
 
 			$this->temp_media_data['file_path'] = $user_path;
 		}
 	}
 
-	protected function generateFolderTemp()
+	protected function generateCollectionFolder()
 	{
 		$temp_path = $this->default_path . $this->temp_media_data['collection_name'];
 		if (!is_dir(ROOTPATH . 'public/'. $temp_path)) {
-			mkdir(ROOTPATH . 'public/'. $temp_path, 0777, true);
+			mkdir(ROOTPATH . 'public/'. $temp_path, 0755, true);
 		}
 
 		return $temp_path;
@@ -223,7 +239,7 @@ trait InteractsWithMedia
 	protected function moveFile(string $path_before, string $path_after, string $file_name)
 	{
 		if (!is_dir(ROOTPATH . 'public/'. $path_after)) {
-			mkdir(ROOTPATH . 'public/'. $path_after, 0777, true);
+			mkdir(ROOTPATH . 'public/'. $path_after, 0755, true);
 		}
 
 		shell_exec('mv ' . $path_before . '/' . $file_name . ' ' . $path_after . '/' . $file_name);
@@ -248,7 +264,7 @@ trait InteractsWithMedia
 
 	protected function generateFileName()
 	{
-		$this->temp_media_data['file_name'] = 'default.'.$this->temp_media_data['file_ext'];
+		$this->temp_media_data['file_name'] = 'default';
 	}
 
 	protected function checkFileExists()
@@ -272,7 +288,14 @@ trait InteractsWithMedia
 	 */
 	public function getFirstMedia()
 	{
-		return $this->media_builder->first();
+		$data = $this->media_builder->first();
+
+		if (!$data) {
+			return null;
+		}
+
+		$data->file_url = base_url($data->file_path .'/'. $data->file_name.'.'.$data->file_ext);
+		return $data;
 	}
 
 	/**
@@ -296,7 +319,14 @@ trait InteractsWithMedia
 		$this->operation = 'delete';	
 
 		$this->model_id = $id;
-		$p = $this->media()->where('collection_name', $collectionName)->where('model_id', $id)->where('model_type', get_class($this))->findAll();
+		$p = $this->media()->where('collection_name', $collectionName);
+
+		if ($this->model_id) {
+			$p->where('model_id', $this->model_id);
+		}
+
+		$p = $p->findAll();
+
 		if (count($p) > 0) {
 			foreach ($p as $k => $v) {
 				$pathinfo = pathinfo(ROOTPATH .'public/'. $v->file_path . $v->file_name);
@@ -310,7 +340,7 @@ trait InteractsWithMedia
 	}
 
 	/**
-	 * return data as JSON (Used for API)
+	 * return data as JSON (Used for API) after upload
 	 * @return string
 	 */
 	public function responseJson()
@@ -325,11 +355,21 @@ trait InteractsWithMedia
 		if($this->operation == 'delete') {
 			$message = 'File deleted successfully';
 		}
+		$this->temp_media_data['file_url'] = base_url($this->temp_media_data['file_path'] .'/'. $this->temp_media_data['file_name'].'.'.$this->temp_media_data['file_ext']);
 
 		$resp['data'] = $this->temp_media_data;
 		$resp['status'] = 'success';
 		$resp['message'] = $message;
 		header('Content-Type: application/json');
 		return response()->setJSON($resp)->setStatusCode(201, 'Created');
+	}
+
+	/**
+	 * return blob data (Used for API) after upload
+	 */
+	public function getMediaLocation()
+	{
+		header('Content-Type: application/json');
+		return response()->setJSON(['location' => base_url($this->temp_media_data['file_path'] .'/'. $this->temp_media_data['file_name'].'.'.$this->temp_media_data['file_ext'])])->setStatusCode(201, 'Created');
 	}
 }

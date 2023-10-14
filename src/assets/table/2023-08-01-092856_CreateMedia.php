@@ -59,6 +59,10 @@ class CreateMedia extends Migration
                 'constraint' => 100,
                 'null' => true
             ],
+            'custom_properties' => [
+                'type' => 'TEXT',
+                'null' => true
+            ],
             'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true

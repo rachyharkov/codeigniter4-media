@@ -24,6 +24,7 @@ class Media extends Model
         'file_ext',
         'file_path',
         'orig_name',
+        'custom_properties'
     ];
 
     // Dates

@@ -267,3 +267,11 @@ Sorry if it looks completely messed up, i'm still develop an approach and functi
 Are you using this package and having a problem? feel free to open an issue.
 
 and please, don't implement it with production yet, let me feel the pain first then u can use it after
+
+## License
+
+MIT License
+
+## Contributing
+
+You can contribute to this package by discovering bugs and opening issues. If you want to contribute code, please create a pull request. But you need to test it first using the demo project [Here](https://github.com/rachyharkov/codeigniter-4-media-debug)

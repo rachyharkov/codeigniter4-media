@@ -18,7 +18,6 @@
             "Rachyharkov\\CodeigniterMedia\\": "src/"
         }
     },
-    "minimum-stability": "dev",
     "scripts" : {
         "post-install-cmd" : [
             "php post-install-script.php"

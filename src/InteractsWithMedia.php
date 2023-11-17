@@ -77,6 +77,20 @@ trait InteractsWithMedia
 		return $this;
 	}
 
+	/**
+	 * Get all specified input files from request and validate it
+	 * @param $array
+	 * @return $this
+	 */
+
+		public function addMediaWithRequestCollectionMapping(array $array): self
+		{
+			foreach ($array as $key => $value) {
+				$this->addMediaFromRequest($key)->toMediaCollection($value);
+			}
+			return $this;
+		}
+
 
 	/**
 	 * clear temp media, need unique name of who owns it, you can get it from putItInCollection() method before, you may specify it as api request or not by passing true or false to see the response
@@ -115,7 +129,7 @@ trait InteractsWithMedia
 	 * @return $this
 	 * @throws ValidationException
 	 */
-	public function toMediaCollection(string $collectionName = 'default'): self
+	public function toMediaCollection(string $collectionName = 'default')
 	{
 		$this->operation = 'add';
 
@@ -140,7 +154,7 @@ trait InteractsWithMedia
 		// used to store after insert data operation
 		try {
 			//https://forum.codeigniter.com/showthread.php?tid=78276&pid=382975#pid382975
-			$this->model_id = $this->insertID();
+			$this->model_id = $this->getInsertID();
 			$this->temp_media_data['model_id'] = $this->model_id;
 			$this->storeMedia();
 

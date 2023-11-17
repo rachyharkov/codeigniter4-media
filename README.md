@@ -42,6 +42,18 @@ only use usingFileName method after addMediaFromRequest method, this will be use
     $this->user_model->addMediaFromRequest('photo')->usingFileName('data_'.random(20))->toMediaCollection('profile_photo');
 ```
 
+## Store Multi File - with custom name
+
+store file from multi different request name (for example, you have 2 input file with different input file name attribute value, and you want to store it to same collection)
+
+```php
+    $this->user_model->insert($data);
+    $this->user_model->addMediaWithRequestCollectionMapping([
+      'file_input_photo' => 'profile_photo_collection',
+      'file_input_profile_cover' => 'profile_photo_collection'
+    ])
+```
+
 ### Get Single File - Metadata
 
 ```php

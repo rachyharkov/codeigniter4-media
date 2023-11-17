@@ -13,6 +13,13 @@ interface HasMedia {
 	 * @throws ValidationException
 	 */
   public function addMediaFromRequest($field): self;
+
+  /**
+   * Get all specified input files from request and validate it
+   * @param $array
+   * @return $this
+   */
+  public function addMediaWithRequestCollectionMapping(array $array): self;
   
   /**
   * add media to collection with custom name
@@ -20,7 +27,7 @@ interface HasMedia {
   * @return $this
   * @throws ValidationException
   */
-  public function toMediaCollection(string $collectionName = 'default'): self;
+  public function toMediaCollection(string $collectionName = 'default');
 
   /**
   * Find media by who owns it, and which collection you want to get

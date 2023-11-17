@@ -42,7 +42,7 @@ only use usingFileName method after addMediaFromRequest method, this will be use
     $this->user_model->addMediaFromRequest('photo')->usingFileName('data_'.random(20))->toMediaCollection('profile_photo');
 ```
 
-## Store Multi File - with custom name
+## Store Multi File
 
 store file from multi different request name (for example, you have 2 input file with different input file name attribute value, and you want to store it to same collection)
 

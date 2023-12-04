@@ -3,8 +3,11 @@ Codeigniter package for to handle media upload file task (at least help a bit fo
 
 # Installation
 
+## Composer
+
 `composer require rachyharkov/codeigniter4-media`
 
+## Setup Model
 just set your model like this
 
 ```php
@@ -42,7 +45,7 @@ only use usingFileName method after addMediaFromRequest method, this will be use
     $this->user_model->addMediaFromRequest('photo')->usingFileName('data_'.random(20))->toMediaCollection('profile_photo');
 ```
 
-## Store Multi File
+## Store Multi File - Different Name
 
 store file from multi different request name (for example, you have 2 input file with different input file name attribute value, and you want to store it to same collection)
 
@@ -52,6 +55,19 @@ store file from multi different request name (for example, you have 2 input file
       'file_input_photo' => 'profile_photo_collection',
       'file_input_profile_cover' => 'profile_photo_collection'
     ])
+```
+
+## Store Multi File - Same Name
+
+This time using addMedia, make sure it's an file object (binary payload) to make addMedia accept value, in this example using multiple file input with same name attribute value
+
+```php
+    $this->product_model->insert($data);
+    $product_images = $this->request->getFiles();
+
+    foreach ($product_images['photos'] as $key => $p) {
+        $this->product_model->addMedia($p)->toMediaCollection('product_image');
+    }
 ```
 
 ### Get Single File - Metadata
@@ -74,6 +90,7 @@ above will return null if no file meta information returned, handle it like this
 ### Get Single File - Just URL
 
 This is the example of how to assign new object to existing object (for example user object) with new property (photo) that contains the url of file
+
 ```php
 
 $this->data['user']->photo = $this->user_model->mediaOf($this->data['user']->id,'profile_photo')->getFirstMediaUrl();
@@ -151,125 +168,6 @@ You will get this response
         status: "success",
         message: "File 1691502324_94b5e01970c97f5ac670.jpg deleted successfuly",
     }
-```
-
-🪄 **Frontend Implementation**
-
-it's easy to using alpineJS, but most of you are JQuery user, soo here it is..
-
-Example using jquery
-
-Set your html like this
-
-```html
-
-<div class="form-group">
-  <label for="file">File</label>
-  <input type="file" class="form-control" id="file" name="file">
-</div>
-
-<ul id="list_file"></ul>
-```
-
-Write your javascript like this
-
-```js
-
-let array_uploaded_file = [];
-
-function render_list_file() {
-  let html = '';
-  array_uploaded_file.forEach((item, index) => {
-    html += `
-    <li style="font-size: 10px;">
-      <span>${item.name}</span>
-      <button type="button" class="btn btn-sm btn-copy-link" data-id="${index}"><i class="fa fa-copy"></i></button>
-      <button type="button" class="btn btn-sm btn-danger btn-delete-file" data-id="${index}"><i class="fa fa-trash"></i></button>
-    </li>`;
-  });
-  $('#list_file').html(html);
-}
-
-function copy_link(index) {
-  let url = array_uploaded_file[index].url;
-  navigator.clipboard.writeText(url).then(function() {
-    Toast.fire({
-      icon: 'success',
-      title: 'Success',
-      timer: 4000,
-      text: 'Link Copied Successfuly'
-    })
-  }, function() {
-    alert('Failed to copy link');
-  });
-}
-
-function upload_file(file, type) {
-
-  formData.append('file', file);
-  
-  $.ajax({
-    url: '<?= url_to('admin.users.api_upload') ?>',
-    type: 'POST',
-    data: formData,
-    contentType: false,
-    processData: false,
-    success: function(resp) {
-      if(resp.status == 'success') {
-        array_uploaded_file.push({
-          name: resp.data.file_name,
-          url: '<?= base_url() ?>' + resp.data.file_path + '/' + resp.data.file_name,
-          temp_id: resp.data.unique_name
-        });
-        render_list_file();
-      }
-    }
-  });
-}
-
-function delete_file(index) {
-  $.ajax({
-    url: '<?= url_to('admin.users.api_delete') ?>',
-    type: 'POST',
-    data: {
-      temp_id: array_uploaded_file[index].temp_id
-    },
-    success: function(resp) {
-      if(resp.status == 'success') {
-        array_uploaded_file.splice(index, 1);
-        render_list_file();
-        Toast.fire({
-          icon: 'success',
-          title: 'Success',
-          timer: 4000,
-          text: resp.message
-        })
-      }
-    },
-    error: function() {
-      alert('Failed to delete file');
-    }
-  });
-}
-
-$('#file').on('change', function() {
-  let file = $(this).prop('files')[0];
-  upload_file(file, 'gambar');
-});
-
-$(document).on('click', '.btn-copy-link', function() {
-  copy_link($(this).data('id'));
-
-  $(this).html('<i class="fa fa-check text-success"></i>');
-  setTimeout(() => {
-    $(this).html('<i class="fa fa-copy"></i>');
-  }, 2000);
-});
-
-$(document).on('click', '.btn-delete-file', function() {
-  delete_file($(this).data('id'));
-});
-
 ```
 
 ## Notes

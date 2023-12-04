@@ -50,7 +50,7 @@ trait InteractsWithMedia
 		$this->model_id = $id;
 		$this->collectionName = $collectionName;
 
-		$this->media_builder = $this->media()->where('collection_name', $this->collectionName);
+		$this->media_builder = $this->media()->where('collection_name', $this->collectionName)->orderBy('id', 'DESC');
 
 		if ($this->model_id) {
 			$this->media_builder->where('model_id', $this->model_id);
@@ -61,7 +61,13 @@ trait InteractsWithMedia
 
 	public function getAllMedia()
 	{
-		return $this->media_builder->findAll();
+		$result 			= $this->media_builder->findAll();
+		
+		foreach ($result as $key => $value) {
+			$result[$key]->file_url = base_url($value->file_path .'/'. $value->file_name.'.'.$value->file_ext);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -91,8 +97,14 @@ trait InteractsWithMedia
 			return $this;
 		}
 
+		public function addMedia($file): self
+		{
+			$this->validateFile($file);
+			$this->media_file = $file;
+			return $this;
+		}
 
-	/**
+		/**
 	 * clear temp media, need unique name of who owns it, you can get it from putItInCollection() method before, you may specify it as api request or not by passing true or false to see the response
 	 * @param string|null $id
 	 */
@@ -150,24 +162,16 @@ trait InteractsWithMedia
 
 		
 		$this->setDefaultPath();
-		
-		// used to store after insert data operation
+			
 		try {
 			//https://forum.codeigniter.com/showthread.php?tid=78276&pid=382975#pid382975
-			$this->model_id = $this->getInsertID();
+			// how do we know model_id is not null? because clearMediaCollection() method will set model_id, it's dumb to not set model_id on clearMediaCollection() right?
+			$this->model_id = $this->getInsertID() == 0 ? $this->model_id : $this->getInsertID();
 			$this->temp_media_data['model_id'] = $this->model_id;
 			$this->storeMedia();
-
+			
 			return $this;
 		} catch (\Throwable $th) {  
-			if($this->model_id) { // if model id is not null, then it means that the model is already inserted, so we can continue to store the media
-				$this->temp_media_data['model_id'] = $this->model_id;
-
-				$this->storeMedia();
-	
-				return $this;
-			}
-			// if model id is null, then it means the media not data-related, so we store it on collection
 			$this->putItInCollection();
 			
 			return $this;
@@ -346,7 +350,7 @@ trait InteractsWithMedia
 				$pathinfo = pathinfo(ROOTPATH .'public/'. $v->file_path . $v->file_name);
 
 				if (is_dir($pathinfo['dirname'])) {
-					shell_exec('rm -rf ' . escapeshellarg($pathinfo['dirname'] . '/' . $v->model_id));
+					shell_exec('rm -rf ' . escapeshellarg($pathinfo['dirname'] . '/' . $v->id));
 				}
 				$this->media()->delete($v->id);
 			}

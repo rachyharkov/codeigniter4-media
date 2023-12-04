@@ -15,6 +15,14 @@ interface HasMedia {
   public function addMediaFromRequest($field): self;
 
   /**
+   * add media
+   * @param $file
+   * @throws ValidationException
+   */
+  public function addMedia($file): self;
+
+
+  /**
    * Get all specified input files from request and validate it
    * @param $array
    * @return $this

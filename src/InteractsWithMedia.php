@@ -5,6 +5,8 @@ namespace App\Libraries\backend;
 use App\Models\Media;
 use CodeIgniter\Model;
 use CodeIgniter\Validation\Exceptions\ValidationException;
+use Config\Services;
+use Exception;
 use PhpParser\Node\Stmt\Return_;
 
 trait InteractsWithMedia
@@ -23,6 +25,10 @@ trait InteractsWithMedia
 	protected $temp_media_data;
 
 	protected $default_path;
+
+	protected $with_thumbnail = false;
+
+	// protected $thumbnail_size = [100, 100];
 
 	protected $operation;
 
@@ -89,20 +95,20 @@ trait InteractsWithMedia
 	 * @return $this
 	 */
 
-		public function addMediaWithRequestCollectionMapping(array $array): self
-		{
-			foreach ($array as $key => $value) {
-				$this->addMediaFromRequest($key)->toMediaCollection($value);
-			}
-			return $this;
+	public function addMediaWithRequestCollectionMapping(array $array): self
+	{
+		foreach ($array as $key => $value) {
+			$this->addMediaFromRequest($key)->toMediaCollection($value);
 		}
+		return $this;
+	}
 
-		public function addMedia($file): self
-		{
-			$this->validateFile($file);
-			$this->media_file = $file;
-			return $this;
-		}
+	public function addMedia($file): self
+	{
+		$this->validateFile($file);
+		$this->media_file = $file;
+		return $this;
+	}
 
 		/**
 	 * clear temp media, need unique name of who owns it, you can get it from putItInCollection() method before, you may specify it as api request or not by passing true or false to see the response
@@ -134,7 +140,6 @@ trait InteractsWithMedia
 		return $this;
 	}
 
-
 	/**
 	 * add media to collection (folder and label)
 	 * @param string $collectionName
@@ -163,20 +168,52 @@ trait InteractsWithMedia
 		
 		$this->setDefaultPath();
 			
-		try {
-			//https://forum.codeigniter.com/showthread.php?tid=78276&pid=382975#pid382975
-			// how do we know model_id is not null? because clearMediaCollection() method will set model_id, it's dumb to not set model_id on clearMediaCollection() right?
-			$this->model_id = $this->getInsertID() == 0 ? $this->model_id : $this->getInsertID();
+
+		$id = $this->getModelID();
+
+		// dd($id);
+
+		if($id === false) {
+			$this->putItInCollection();
+		} else {
+			$this->model_id = $id; 
 			$this->temp_media_data['model_id'] = $this->model_id;
 			$this->storeMedia();
-			
-			return $this;
-		} catch (\Throwable $th) {  
-			$this->putItInCollection();
-			
-			return $this;
 		}
 
+		return $this;
+	}
+
+	public function withThumbnail(): self
+	{
+		if (!$this->isImage()) {
+			return new Exception('This file is not an image');
+		}
+
+		$this->with_thumbnail = true;
+		return $this;
+	}
+
+	protected function isImage(): bool
+	{
+		return strpos($this->media_file->getClientMimeType(), 'image') !== false;
+	}
+
+	protected function getModelID() {
+		$id = $this->getInsertID();
+
+		if($id == 0) {
+
+			if($this->model_id) {
+				return $this->model_id;
+			}
+
+			return false;
+		}
+
+		if($this->getInsertID() != 0) {
+			return $id;
+		}
 	}
 
 	/**
@@ -207,6 +244,7 @@ trait InteractsWithMedia
 		if($this->temp_media_data['file_name'] == null) {
 			$this->generateFileName();
 		}
+		
 		$this->media()->insert($this->temp_media_data);
 
 		$last_insert_id = $this->media()->insertID();
@@ -222,8 +260,23 @@ trait InteractsWithMedia
 			$this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext']
 		);
 
+		if ($this->with_thumbnail) {
+			$this->generateThumbnail();
+		}
+
 		// destroy the file object
 		$this->media_file = null;
+	}
+
+	protected function generateThumbnail()
+	{
+		$image_size = getimagesize(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext']);
+
+		Services::image()
+			->withFile(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'] . '.' . $this->temp_media_data['file_ext'])
+			// do not change the size, just make it smaller
+			->fit($image_size[0] / 2, $image_size[1] / 2, 'center')
+			->save(ROOTPATH . 'public/'. $this->temp_media_data['file_path'] . '/' . $this->temp_media_data['file_name'] . '-thumb.' . $this->temp_media_data['file_ext']);
 	}
 
 	protected function setDefaultPath(string $root_path = 'uploads/')
@@ -313,31 +366,48 @@ trait InteractsWithMedia
 		}
 
 		$data->file_url = base_url($data->file_path .'/'. $data->file_name.'.'.$data->file_ext);
+		
+		if ($data->file_type == 'image/jpeg' || $data->file_type == 'image/png') {
+			$data->thumb_url = base_url($data->file_path .'/'. $data->file_name.'-thumb.'.$data->file_ext);
+		}
+		
 		return $data;
 	}
 
 	/**
 	 * just return url of first media
+	 * @param string|null $type (optional - which type of media you want to get, ussuallly used for image)
 	 * @return string|null
 	 */
-	public function getFirstMediaUrl()
+	public function getFirstMediaUrl(string $type = null)
 	{
 		$media = $this->getFirstMedia();
 		if ($media) {
+
+			if ($type == 'thumb') {
+				return base_url($media->file_path .'/'. $media->file_name.'-thumb.'.$media->file_ext);
+			}
+
 			return base_url($media->file_path .'/'. $media->file_name.'.'.$media->file_ext);
 		}
 		return null;
 	}
 
-	/**
-   * clear from media collection
-   */
-	public function clearMediaCollection(string $collectionName = 'default', string $id = null)
+  /**
+  * clear from media collection
+  * @param string $collectionName
+  * @param string $id
+  */
+	public function clearMediaCollection(string $collectionName = null, string $id = null)
 	{
 		$this->operation = 'delete';	
 
 		$this->model_id = $id;
-		$p = $this->media()->where('collection_name', $collectionName);
+		$p = $this->media()->where('model_type', get_class($this));
+
+		if ($collectionName) {
+			$p->where('collection_name', $collectionName);
+		}
 
 		if ($this->model_id) {
 			$p->where('model_id', $this->model_id);
@@ -388,6 +458,8 @@ trait InteractsWithMedia
 	public function getMediaLocation()
 	{
 		header('Content-Type: application/json');
-		return response()->setJSON(['location' => base_url($this->temp_media_data['file_path'] .'/'. $this->temp_media_data['file_name'].'.'.$this->temp_media_data['file_ext'])])->setStatusCode(201, 'Created');
+		return response()
+			->setJSON(['location' => base_url($this->temp_media_data['file_path'] .'/'. $this->temp_media_data['file_name'].'.'.$this->temp_media_data['file_ext'])])
+			->setStatusCode(201, 'Created');
 	}
 }

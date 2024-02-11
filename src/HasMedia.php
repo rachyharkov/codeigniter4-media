@@ -38,6 +38,13 @@ interface HasMedia {
   public function toMediaCollection(string $collectionName = 'default');
 
   /**
+   * if the file you want to store is an image, you can use this to make thumbnail
+   * @return $this
+   * @throws ValidationException
+   */
+  public function withThumbnail();
+
+  /**
   * Find media by who owns it, and which collection you want to get
   * @param string $collectionName
   * @param string $id (if not set, it will find all media in collection)
@@ -48,8 +55,10 @@ interface HasMedia {
 
   /**
   * clear from media collection
+  * @param string $collectionName
+  * @param string $id
   */
-  public function clearMediaCollection(string $collectionName = 'default', string $id = null);
+  public function clearMediaCollection(string $collectionName = null, string $id = null);
   
   /**
 	* get first media metadata
@@ -59,9 +68,10 @@ interface HasMedia {
 
   /**
   * just return url of first media
+  * @param string|null $type (optional - which type of media you want to get, ussuallly used for image)
   * @return string|null
   */
-  public function getFirstMediaUrl();
+  public function getFirstMediaUrl(string $type = null);
 
   /**
    * get all media metadata

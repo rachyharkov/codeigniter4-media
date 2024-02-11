@@ -36,6 +36,15 @@ using name attribute of html input to let codeigniter4-media get the file, and a
     $this->user_model->addMediaFromRequest('photo')->toMediaCollection('profile_photo');
 ```
 
+### Store single file - store thumbnail
+
+It's useful if you want to store the thumbnail of the file, just add withThumbnail method after addMediaFromRequest method
+
+```php
+    $this->user_model->insert($data);
+    $this->user_model->addMediaFromRequest('photo')->withThumbnail()->toMediaCollection('profile_photo');
+```
+
 ## Store single File - with custom name
 
 only use usingFileName method after addMediaFromRequest method, this will be useful if you want to rename the file before store it to database
@@ -97,6 +106,12 @@ $this->data['user']->photo = $this->user_model->mediaOf($this->data['user']->id,
 
 return view('user/edit', $data);
 
+```
+
+It's possible to pass parameter with 'thumb' value to get the thumbnail of the file
+
+```php
+    $media->getFirstMediaUrl('thumb');
 ```
 
 ### Get All file of collection

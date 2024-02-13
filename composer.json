@@ -13,14 +13,11 @@
             "email": "rachmadnurhayat@gmail.com"
         }
     ],
+    "minimum-stability": "dev",
     "autoload": {
         "psr-4": {
             "Rachyharkov\\CodeigniterMedia\\": "src/"
-        }
-    },
-    "scripts" : {
-        "post-install-cmd" : [
-            "php post-install-script.php"
-        ]
+        },
+        "files": ["src/utilities/autoloader.php"]
     }
 }

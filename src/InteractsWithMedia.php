@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Libraries\backend;
+namespace Rachyharkov\CodeigniterMedia;
 
 use App\Models\Media;
 use CodeIgniter\Model;

@@ -2,7 +2,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/rachyharkov/codeigniter4-media">
-    <img src="./assets/codeigniter-4-media-banner.png" alt="Logo"  height="200">
+    <img src="./src/assets/codeigniter-4-media-banner.png" alt="Banner"  height="200">
   </a>
   
   <h3 align="center">CodeIgniter 4 Media Library</h3>

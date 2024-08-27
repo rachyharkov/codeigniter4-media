@@ -20,7 +20,7 @@ class CreateMedia extends Migration
                 'null' => true
             ],
             'model_id' => [
-                'type' => 'VARCHAR',
+                'type' => 'BIGINT',
                 'constraint' => 100,
                 'null' => true
             ],

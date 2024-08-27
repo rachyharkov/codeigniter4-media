@@ -1,6 +1,6 @@
 <?php
 
-namespace Rachyharkov\CodeigniterMedia;
+namespace App\Interfaces;
 
 use CodeIgniter\Model;
 
@@ -47,18 +47,16 @@ interface HasMedia {
   /**
   * Find media by who owns it, and which collection you want to get
   * @param string $collectionName
-  * @param string $id (if not set, it will find all media in collection)
-  * @param bool $return_result (optional)
+  * @param int $id
   * @return $this
   */
-  public function mediaOf(string $collectionName = 'default', string $id = null);
+  public function mediaOf(string $collectionName = 'default', int $id = null);
 
   /**
   * clear from media collection
   * @param string $collectionName
-  * @param string $id
   */
-  public function clearMediaCollection(string $collectionName = null, string $id = null);
+  public function clearMediaCollection(string $collectionName = null);
   
   /**
 	* get first media metadata

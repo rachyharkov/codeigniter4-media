@@ -1,29 +1,45 @@
 {
     "name": "rachyharkov/codeigniter4-media",
-    "description": "Codeigniter 4 library for managing media and handling upload behavior",
-    "type": "library",
+    "description": "Codeigniter 4 library for managing file or media and handling upload behavior",
+    "keywords": [
+        "codeigniter",
+        "codeigniter4",
+        "php7",
+        "php8",
+        "php-library",
+        "codeigniter upload",
+        "upload media",
+        "library media",
+        "media management",
+        "media handler",
+        "media upload",
+        "media"
+    ],
+    "homepage": "https://github.com/rachyharkov/codeigniter4-media",
     "require": {
-        "php": ">=7.3",
+        "php": ">=7.3"
+    },
+    "require-dev": {
         "codeigniter4/framework": "^4"
     },
     "license": "MIT",
     "authors": [
         {
             "name": "Rachmad Nur Hayat",
-            "email": "rachmadnurhayat@gmail.com"
+            "email": "rachmadnurhayat@gmail.com",
+            "homepage": "https://rachmad.dev",
+            "role": "Developer"
         }
     ],
     "autoload": {
         "psr-4": {
-            "Rachyharkov\\CodeigniterMedia\\": "src/"
+            "Rachyharkov\\CodeigniterMedia\\": "src"
         }
     },
     "scripts" : {
-        "post-package-install" : [
-            "@test"
-        ],
-        "test" : [
-            "echo \"Test.........\""
+        "post-update-cmd": [
+            "composer dump-autoload",
+            "php spark migrate:latest -n all"
         ]
     }
 }

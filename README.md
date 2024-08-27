@@ -11,13 +11,13 @@
 <br />
 <p align="center">
   <a href="https://github.com/rachyharkov/codeigniter4-media">
-    <img src="https://user-images.githubusercontent.com/38932580/71325065-b6d05600-2511-11ea-9169-694185c48f8b.png" alt="Logo" width="80" height="80">
+    <img src="./assets/codeigniter-4-media-banner.png" alt="Logo"  height="200">
   </a>
   
-  <h3 align="center">CodeIgniter 4 WebSocket Library</h3>
+  <h3 align="center">CodeIgniter 4 Media Library</h3>
 </p>
 
-Codeigniter package for to handle media upload file task (at least help a bit for my current job). My main goal on this package is codeigniter 4 have a library that be able to handle task such as organize file upload with minimial line of code
+Codeigniter package for to handle media upload file task (at least help a bit for my current job). My main goal on this package is codeigniter 4 have a library that be able to handle task such as organize file upload with minimial line of code, also i'm inspired by Laravel Media Library, so i decided to make this package.
 
 
 <!-- TABLE OF CONTENTS -->

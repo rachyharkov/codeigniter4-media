@@ -66,10 +66,17 @@ To get a local copy up and running follow these simple example steps.
 ```sh
 composer require rachyharkov/codeigniter4-media @dev
 ```
+
 ### Publishing Resource
 You need to publish the resources for the default configuration
 ```sh
 php spark media:publish
+```
+
+### Migrate
+then migrate new published table
+```sh
+php spark migrate
 ```
 
 ### Setup Model

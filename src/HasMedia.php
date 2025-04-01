@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Interfaces;
+namespace Rachyharkov\CodeigniterMedia;
 
 use CodeIgniter\Model;
+use CodeIgniter\Validation\Exceptions\ValidationException;
 
 interface HasMedia {
   public function media(): Model;

@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Libraries\backend;
+namespace Rachyharkov\CodeigniterMedia;
 
 use App\Models\Media;
 use CodeIgniter\Model;
 use CodeIgniter\Validation\Exceptions\ValidationException;
 use Config\Services;
 use Exception;
-use PhpParser\Node\Stmt\Return_;
+
 
 trait InteractsWithMedia
 {
